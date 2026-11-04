@@ -80,3 +80,8 @@ Night-garage look from the prototype. Tokens:
 - Record significant technical decisions as short ADRs in `docs/decisions/`.
 - Update the milestone checklist in `docs/PRD.md` when a task is finished.
 - Ask before adding a new dependency or a new paid service.
+
+## Testing
+
+All tests run in Docker Compose; see `docs/TESTING.md`. Before saying a task is done run `make test`
+(plus `make e2e` for UI work). Never call the real Claude API outside `pnpm evals`.

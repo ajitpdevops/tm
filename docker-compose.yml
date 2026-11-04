@@ -1,0 +1,91 @@
+# Local dev + test stack. Everything runs in containers; nothing needs installing on the host.
+#   docker compose up -d db redis                 # backing services only (for `pnpm dev` on host)
+#   docker compose run --rm unit                  # unit tests (no services needed)
+#   docker compose run --rm integration           # integration tests (db + redis)
+#   docker compose run --rm e2e                   # Playwright against the built web app
+# Or just use the Makefile targets.
+name: torquemach
+
+x-app: &app
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+    target: test
+  working_dir: /app
+  environment: &env
+    NODE_ENV: test
+    DATABASE_URL: postgres://torque:torque@db:5432/torque_test
+    REDIS_URL: redis://redis:6379
+    # AI tests must never hit the real API; evals use a separate, explicit command.
+    ANTHROPIC_API_KEY: test-key-not-real
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: torque
+      POSTGRES_PASSWORD: torque
+      POSTGRES_DB: torque_test
+    ports: ["5432:5432"]
+    tmpfs: [/var/lib/postgresql/data]   # fast, throwaway
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U torque -d torque_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  unit:
+    <<: *app
+    profiles: [test]
+    command: pnpm test
+
+  integration:
+    <<: *app
+    profiles: [test]
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    # migrate + seed a clean DB, then run integration suite
+    command: sh -c "pnpm db:migrate && pnpm db:seed && pnpm test:integration"
+
+  quality:
+    <<: *app
+    profiles: [test]
+    command: sh -c "pnpm lint && pnpm typecheck"
+
+  web:
+    <<: *app
+    profiles: [e2e]
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    command: sh -c "pnpm db:migrate && pnpm db:seed && pnpm --filter web build && pnpm --filter web start -p 3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000 >/dev/null || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 60
+
+  e2e:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: e2e
+    profiles: [e2e]
+    depends_on:
+      web: {condition: service_healthy}
+    environment:
+      BASE_URL: http://web:3000
+    volumes:
+      - ./playwright-report:/app/playwright-report
+      - ./test-results:/app/test-results
+    command: pnpm test:e2e

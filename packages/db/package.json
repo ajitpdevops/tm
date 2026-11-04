@@ -1,0 +1,10 @@
+{
+  "name": "@torque/db",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "db:migrate": "echo \"[@torque/db] no migrations yet (M1)\"",
+    "db:seed": "echo \"[@torque/db] no seed data yet (M1)\"",
+    "test:integration": "node scripts/connectivity.mjs"
+  }
+}
