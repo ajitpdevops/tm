@@ -45,7 +45,7 @@ One-time setup:
 
 ## Working in Claude's cloud environment
 
-- Check the sandbox has Docker (`docker compose version`). If not, the same scripts run natively:
+- Claude's cloud sandbox has the Docker CLI but **no running daemon** (verified), so `make` targets can't run there; run `pnpm test` / `pnpm typecheck` directly for unit work and let GitHub Actions run the compose-based integration/e2e jobs. If Docker is available, the same scripts run natively:
   start Postgres/Redis however the environment allows, set `DATABASE_URL`/`REDIS_URL`, and use `pnpm test` etc.
 - Always finish a task by running `make test` (and `make e2e` for UI work); CI is the backstop, not the first check.
 
