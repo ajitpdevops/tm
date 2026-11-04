@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TorqueMach</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Night-garage world: graphite, tail-light red, xenon blue. Layout: stacked showroom sections, chat first. */
+  --bg:#0b0d12;
+  --panel:#141823;
+  --line:#262c3b;
+  --ink:#eef1f7;
+  --muted:#8b94a9;
+  --red:#ff3d2e;
+  --xenon:#7fd4ff;
+  --display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--xenon);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+h1,h2,h3{font-family:var(--display);text-transform:uppercase;letter-spacing:.01em;text-wrap:balance;margin:0;line-height:.95}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* nav */
+nav{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;align-items:center;gap:20px;height:58px}
+.logo{font-family:var(--display);font-weight:900;font-size:26px;letter-spacing:.04em;display:flex;align-items:center;gap:8px}
+.logo em{font-style:normal;color:var(--red);text-shadow:0 0 16px color-mix(in srgb,var(--red) 60%,transparent)}
+.count{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--red);color:#fff;font-size:11px;margin-left:4px}
+nav a{color:var(--muted);text-decoration:none;font-weight:600;font-size:14px}
+nav a:hover{color:var(--ink)}
+.navlinks{display:flex;gap:18px;margin-left:auto}
+.ai-chip{font-size:12px;font-weight:700;padding:4px 10px;border-radius:99px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.ai-chip.live{color:var(--xenon);border-color:color-mix(in srgb,var(--xenon) 50%,transparent)}
+@media (max-width:620px){.navlinks{display:none}.ai-chip{margin-left:auto}}
+
+/* hero */
+.hero{position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
+#streaks{position:absolute;inset:0;width:100%;height:100%;opacity:.9}
+.hero .wrap{position:relative;display:grid;grid-template-columns:1fr 1.1fr;gap:40px;padding-top:48px;padding-bottom:48px;align-items:start}
+@media (max-width:900px){.hero .wrap{grid-template-columns:1fr;gap:24px;padding-top:32px}}
+.kicker{font-family:var(--mono);font-size:12px;color:var(--red);letter-spacing:.12em;text-transform:uppercase}
+.hero h1{font-size:clamp(48px,8vw,96px);font-weight:900;margin:12px 0 16px}
+.hero h1 em{font-style:normal;color:var(--red);text-shadow:0 0 30px color-mix(in srgb,var(--red) 60%,transparent)}
+.hero p.lede{color:var(--muted);font-size:18px;max-width:46ch;margin:0}
+.rpm{display:flex;gap:22px;margin-top:28px;flex-wrap:wrap}
+.rpm div{border-left:2px solid var(--red);padding-left:10px}
+.rpm b{display:block;font-family:var(--display);font-size:34px;line-height:1}
+.rpm span{font-size:13px;color:var(--muted)}
+
+/* chat */
+.chat{background:color-mix(in srgb,var(--panel) 92%,transparent);border:1px solid var(--line);border-radius:18px;display:flex;flex-direction:column;height:560px;box-shadow:0 30px 80px -30px #000,0 0 0 1px #ffffff08 inset}
+.chat-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.chat-head .dot{width:9px;height:9px;border-radius:50%;background:var(--red);box-shadow:0 0 10px var(--red)}
+.chat-head b{font-weight:700}
+.chat-head small{color:var(--muted);margin-left:auto;font-size:12px}
+.log{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+.msg{max-width:88%;padding:10px 14px;border-radius:14px;font-size:15px;white-space:pre-wrap}
+.msg.me{align-self:flex-end;background:var(--red);color:#fff;border-bottom-right-radius:4px}
+.msg.ai{align-self:flex-start;background:#1c2130;border:1px solid var(--line);border-bottom-left-radius:4px}
+.msg.tag{align-self:center;font-size:11px;color:var(--muted);background:none;padding:0;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase}
+.picks{display:grid;gap:8px;margin-top:10px;white-space:normal}
+.pick{display:grid;grid-template-columns:64px 1fr;gap:10px;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:8px 10px;cursor:pointer;text-align:left;width:100%}
+.pick:hover{border-color:var(--red)}
+.pick svg{width:64px;height:auto}
+.pick b{display:block;font-size:14px}
+.pick span{display:block;font-size:13px;color:var(--muted);line-height:1.35}
+.suggest{display:flex;gap:6px;flex-wrap:wrap;padding:0 16px 10px}
+.suggest button{font-size:12px;padding:6px 10px;border-radius:99px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer}
+.suggest button:hover{color:var(--ink);border-color:var(--muted)}
+.composer{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line)}
+.composer input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.btn{background:var(--red);color:#fff;border:0;border-radius:12px;padding:0 18px;font-weight:700;cursor:pointer;min-height:44px}
+.btn:hover{filter:brightness(1.1)}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
+.typing{display:inline-flex;gap:4px}
+.typing i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:blink 1s infinite}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes blink{50%{opacity:.25}}
+
+/* sections */
+section.block{padding:64px 0;border-bottom:1px solid var(--line)}
+.sec-head{display:flex;align-items:end;gap:20px;flex-wrap:wrap;margin-bottom:24px}
+.sec-head h2{font-size:clamp(38px,5.5vw,60px);font-weight:900}
+.sec-head p{color:var(--muted);margin:0;max-width:52ch}
+.sec-head .tools{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.chipbtn{font-size:13px;font-weight:600;padding:7px 12px;border-radius:99px;border:1px solid var(--line);background:transparent;cursor:pointer;color:var(--muted)}
+.chipbtn[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+/* garage */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.card{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px;overflow:hidden;transition:transform .25s,border-color .25s}
+.card:hover{transform:translateY(-3px);border-color:color-mix(in srgb,var(--red) 55%,var(--line))}
+.card .stage{position:relative;height:120px;border-radius:12px;background:radial-gradient(120% 90% at 50% 100%,#1f2534 0%,var(--bg) 70%);display:grid;place-items:center;overflow:hidden}
+.card .stage::after{content:"";position:absolute;left:10%;right:10%;bottom:14px;height:10px;border-radius:50%;background:#000;filter:blur(8px);opacity:.8}
+.card .stage svg{position:relative;z-index:1;width:84%;height:auto;transition:transform .4s}
+.card:hover .stage svg{transform:translateX(-6px) scale(1.03)}
+.brandline{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.brandline small{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.stars{color:var(--red);font-size:13px;letter-spacing:1px;white-space:nowrap}
+.card h3{font-size:30px;font-weight:800}
+.card .price{color:var(--muted);font-size:14px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stats div{background:var(--bg);border-radius:10px;padding:8px}
+.stats b{display:block;font-family:var(--mono);font-size:17px}
+.stats span{font-size:11px;color:var(--muted)}
+.real{font-size:13px;color:var(--xenon);border-left:2px solid var(--xenon);padding-left:8px}
+.card .actions{display:flex;gap:8px;margin-top:auto}
+.card .actions button{flex:1;min-height:40px;font-size:13px;border-radius:10px}
+.tagpill{position:absolute;top:24px;left:24px;z-index:2;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;background:var(--xenon);color:var(--bg)}
+
+/* battle */
+.arena{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:20px}
+.battle-form{display:flex;gap:8px;flex-wrap:wrap}
+.battle-form input{flex:1 1 280px;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.prompts{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.versus{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;margin:26px 0 8px}
+.versus .side{text-align:center}
+.versus svg{width:100%;max-width:240px;height:auto}
+.versus h3{font-size:clamp(26px,4vw,40px);font-weight:900;margin-top:6px}
+.versus .score{font-family:var(--display);font-weight:900;font-size:clamp(40px,7vw,72px);line-height:1}
+.versus .score small{display:block;font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.12em}
+.side.win h3{color:var(--red);text-shadow:0 0 24px color-mix(in srgb,var(--red) 50%,transparent)}
+.mrow{display:grid;grid-template-columns:70px 1fr 120px 1fr 70px;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.mrow .lab{text-align:center;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+.mrow .v{font-family:var(--mono);font-size:14px}
+.mrow .v.a{text-align:right}
+.bar{height:10px;background:var(--bg);border-radius:99px;overflow:hidden;display:flex}
+.bar.a{justify-content:flex-end}
+.bar i{display:block;height:100%;border-radius:99px;background:#3a4256;transition:width .9s cubic-bezier(.2,.8,.2,1)}
+.bar i.w{background:var(--red);box-shadow:0 0 12px var(--red)}
+.v.w{color:var(--red);font-weight:700}
+@media (max-width:620px){.mrow{grid-template-columns:56px 1fr 74px 1fr 56px;gap:6px}.mrow .v{font-size:12px}.mrow .lab{font-size:10px}}
+.verdict{margin-top:16px;padding:16px;border-radius:14px;background:var(--bg);border:1px solid var(--line)}
+.verdict b{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--red);text-transform:uppercase;display:block;margin-bottom:4px}
+
+/* drawer */
+.scrim{position:fixed;inset:0;background:#000a;z-index:40;display:none}
+.scrim.open{display:block}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(520px,100%);background:var(--panel);border-left:1px solid var(--line);z-index:41;transform:translateX(100%);transition:transform .35s cubic-bezier(.2,.8,.2,1);overflow-y:auto;padding:20px}
+.drawer.open{transform:none}
+.drawer .close{float:right}
+.drawer h3{font-size:44px;font-weight:900;margin:8px 0 4px}
+.drawer .hero-car{margin:16px 0;border-radius:14px;background:radial-gradient(120% 90% at 50% 100%,#1f2534 0%,var(--bg) 70%);padding:18px}
+.drawer h4{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:22px 0 10px}
+.tr{display:grid;grid-template-columns:110px 1fr;gap:12px;padding:10px 0;border-top:1px solid var(--line);font-size:14px}
+.tr .k{font-family:var(--mono);color:var(--muted);font-size:13px}
+.tr .life{color:var(--ink)}
+.tr .life small{display:block;color:var(--xenon);font-size:12px}
+.feat{display:flex;flex-wrap:wrap;gap:6px}
+.feat span{font-size:13px;padding:6px 10px;border-radius:99px;background:var(--bg);border:1px solid var(--line)}
+
+footer{padding:28px 0 48px;color:var(--muted);font-size:13px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* heart */
+.heart{position:absolute;top:24px;right:24px;z-index:2;width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:color-mix(in srgb,var(--bg) 70%,transparent);cursor:pointer;font-size:17px;line-height:1;color:var(--muted)}
+.heart[aria-pressed="true"]{color:var(--red);border-color:var(--red);box-shadow:0 0 14px color-mix(in srgb,var(--red) 50%,transparent)}
+
+/* roads */
+.roads{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:20px}
+.road{position:relative;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:14px;cursor:pointer;overflow:hidden;min-height:96px}
+.road svg{position:absolute;right:-6px;bottom:-4px;width:90px;opacity:.5}
+.road b{display:block;font-family:var(--display);font-size:22px;text-transform:uppercase;line-height:1}
+.road span{display:block;font-size:12px;color:var(--muted);margin-top:4px;max-width:14ch}
+.road[aria-pressed="true"]{border-color:var(--red);background:linear-gradient(160deg,color-mix(in srgb,var(--red) 22%,var(--panel)),var(--panel))}
+.road[aria-pressed="true"] svg{opacity:1}
+.rank{display:grid;gap:8px}
+.rk{display:grid;grid-template-columns:28px 92px 1fr 52px;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 12px;cursor:pointer;text-align:left;width:100%}
+.rk:hover{border-color:var(--muted)}
+.rk .pos{font-family:var(--display);font-size:26px;color:var(--muted)}
+.rk:first-child .pos{color:var(--red)}
+.rk svg{width:92px;height:auto}
+.rk b{display:block;font-size:15px}
+.rk small{display:block;color:var(--muted);font-size:12px;line-height:1.35}
+.rk .meter{height:6px;background:var(--bg);border-radius:99px;margin-top:6px;overflow:hidden}
+.rk .meter i{display:block;height:100%;background:var(--xenon);border-radius:99px;transition:width .8s cubic-bezier(.2,.8,.2,1)}
+.rk:first-child .meter i{background:var(--red)}
+.rk .sc{font-family:var(--mono);font-size:18px;text-align:right}
+@media (max-width:620px){.rk{grid-template-columns:22px 64px 1fr 40px;gap:8px}.rk svg{width:64px}}
+
+/* my garage */
+.mine-empty{color:var(--muted);border:1px dashed var(--line);border-radius:14px;padding:24px;text-align:center}
+.mine-row{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px}
+.mine-card{flex:0 0 200px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:left;cursor:pointer}
+.mine-card b{display:block;font-family:var(--display);font-size:22px;text-transform:uppercase}
+.mine-card small{color:var(--muted);font-size:12px}
+.mine-sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:14px}
+.mine-sum div{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+.mine-sum b{display:block;font-family:var(--mono);font-size:20px}
+.mine-sum span{font-size:12px;color:var(--muted)}
+
+/* truth meter */
+.truth{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:14px}
+.truth .big{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.truth .big b{font-family:var(--display);font-size:40px;line-height:1}
+.truth .big span{color:var(--muted);font-size:13px}
+.stack{display:flex;height:16px;border-radius:99px;overflow:hidden;margin:12px 0 8px;background:var(--panel)}
+.stack i{display:block;height:100%}
+.legend{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:13px}
+.legend span{display:flex;align-items:center;gap:8px;color:var(--muted)}
+.legend span i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.legend b{font-family:var(--mono);font-weight:500;text-align:right}
+.legend .back{color:var(--xenon)}
+.resale-svg{width:100%;height:auto;margin-top:12px}
+
+/* ask */
+.ask{display:flex;gap:8px;margin-top:8px}
+.ask input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.ask-out{margin-top:10px;font-size:14px;white-space:pre-wrap;color:var(--ink)}
+.ask-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+
+/* tacho overlay */
+.tacho{position:fixed;left:50%;bottom:20px;transform:translate(-50%,140%);z-index:60;background:color-mix(in srgb,var(--panel) 94%,transparent);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:20px;padding:12px 18px 10px;display:flex;align-items:center;gap:14px;transition:transform .35s cubic-bezier(.2,.8,.2,1);box-shadow:0 20px 60px -20px #000}
+.tacho.show{transform:translate(-50%,0)}
+.tacho svg{width:150px;height:auto}
+.tacho b{display:block;font-family:var(--display);font-size:24px;text-transform:uppercase;line-height:1}
+.tacho small{color:var(--muted);font-size:12px;font-family:var(--mono)}
+.tacho .rpmread{font-family:var(--mono);font-size:22px;color:var(--red);font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <div class="logo"><svg viewBox="0 0 40 26" width="34" height="22" aria-hidden="true"><path d="M4 22 A16 16 0 0 1 36 22" fill="none" stroke="#3a4256" stroke-width="3" stroke-linecap="round"/><path d="M28.5 9.5 A16 16 0 0 1 36 22" fill="none" stroke="#ff3d2e" stroke-width="3" stroke-linecap="round"/><line x1="20" y1="22" x2="31" y2="11" stroke="#eef1f7" stroke-width="2.5" stroke-linecap="round"/><circle cx="20" cy="22" r="2.6" fill="#ff3d2e"/></svg><span>TORQUE<em>MACH</em></span></div>
+    <div class="navlinks">
+      <a href="#concierge">Concierge</a>
+      <a href="#garage">Garage</a>
+      <a href="#roads">Road Match</a>
+      <a href="#battle">Battle</a>
+      <a href="#mine">My Garage <b id="navCount" class="count">0</b></a>
+    </div>
+    <span class="ai-chip" id="aiChip">Demo mode</span>
+  </div>
+</nav>
+
+<header class="hero" id="concierge">
+  <canvas id="streaks" aria-hidden="true"></canvas>
+  <div class="wrap">
+    <div>
+      <div class="kicker">Specs you can feel · Torque macha</div>
+      <h1>Tell us how you drive.<br>We'll find your <em>car.</em></h1>
+      <p class="lede">Skip the filters. Describe your family, your roads and your budget, and TorqueMach picks cars and explains them in real-life terms like suitcases, speed breakers and ghat overtakes.</p>
+      <div class="rpm">
+        <div><b class="num">11</b><span>cars in this prototype</span></div>
+        <div><b class="num">5</b><span>Indian roads to match on</span></div>
+        <div><b class="num">1 tap</b><span>to hear the engine</span></div>
+      </div>
+    </div>
+
+    <div class="chat" role="region" aria-label="AI concierge chat">
+      <div class="chat-head"><span class="dot"></span><b>TorqueMach Concierge</b><small id="chatMode">Example chat</small></div>
+      <div class="log" id="log" aria-live="polite"></div>
+      <div class="suggest" id="suggest">
+        <button type="button">Daily city commute, ₹10L, best mileage</button>
+        <button type="button">Fun to drive, I love highway runs, ₹16L</button>
+        <button type="button">Going electric, ₹25L, want it to look wild</button>
+      </div>
+      <form class="composer" id="chatForm">
+        <label for="chatInput" class="sr" style="position:absolute;left:-9999px">Describe what you need</label>
+        <input id="chatInput" autocomplete="off" placeholder="e.g. 2 kids, Pune traffic, ₹14L, safety first">
+        <button class="btn" type="submit">Ask</button>
+      </form>
+    </div>
+  </div>
+</header>
+
+<section class="block" id="garage">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>The Garage</h2>
+      <p>Every car shows one spec turned into real life. Tap a car to see all of them.</p>
+      <div class="tools" id="filters">
+        <button class="chipbtn" aria-pressed="true" data-f="all">All</button>
+        <button class="chipbtn" aria-pressed="false" data-f="safe">5-star safety</button>
+        <button class="chipbtn" aria-pressed="false" data-f="budget">Starts under ₹9L</button>
+        <button class="chipbtn" aria-pressed="false" data-f="green">EV &amp; hybrid</button>
+      </div>
+    </div>
+    <div class="grid" id="grid"></div>
+  </div>
+</section>
+
+<section class="block" id="roads">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Road Match</h2>
+      <p>Pick the road you drive most. Every car gets scored on the specs that road punishes.</p>
+    </div>
+    <div class="roads" id="roadTiles"></div>
+    <div class="rank" id="rankOut"></div>
+  </div>
+</section>
+
+<section class="block" id="battle">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Battle Mode</h2>
+      <p>Ask a question in your own words. TorqueMach picks the specs that matter for it and declares a winner.</p>
+    </div>
+    <div class="arena">
+      <form class="battle-form" id="battleForm">
+        <label for="battleInput" style="position:absolute;left:-9999px">Battle prompt</label>
+        <input id="battleInput" autocomplete="off" value="Nexon vs 3XO for overtaking on the Lonavala ghat">
+        <button class="btn" type="submit">Fight</button>
+      </form>
+      <div class="prompts" id="battlePrompts">
+        <button class="chipbtn" type="button">Creta vs Grand Vitara for a family road trip</button>
+        <button class="chipbtn" type="button">Brezza vs Kylaq for running cost</button>
+        <button class="chipbtn" type="button">Syros vs Venue for bad village roads</button>
+      </div>
+      <div id="battleOut"></div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="mine">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>My Garage</h2>
+      <p>Tap the heart on any car to park it here. Your garage stays in this browser.</p>
+      <div class="tools"><button class="btn" type="button" id="battleMine">Battle my top 2</button><button class="btn ghost" type="button" id="clearMine">Clear</button></div>
+    </div>
+    <div id="mineOut"></div>
+  </div>
+</section>
+
+<div class="tacho" id="tacho" aria-hidden="true">
+  <svg viewBox="0 0 200 120"><g id="tTicks"></g><path d="M20 105 A80 80 0 0 1 180 105" fill="none" stroke="#262c3b" stroke-width="8" stroke-linecap="round"/><path id="tRed" fill="none" stroke="#ff3d2e" stroke-width="8" stroke-linecap="round"/><line id="tNeedle" x1="100" y1="105" x2="100" y2="35" stroke="#eef1f7" stroke-width="3" stroke-linecap="round"/><circle cx="100" cy="105" r="7" fill="#ff3d2e"/></svg>
+  <div><b id="tName">Nexon</b><div class="rpmread" id="tRead">0</div><small id="tUnit">RPM</small></div>
+</div>
+
+<footer>
+  <div class="wrap">TorqueMach prototype. Specs and prices are approximate ex-showroom figures for illustration; real-life numbers are estimates at ₹105/L petrol and ₹8/kWh home charging. Resale and 5-year costs are rough brand-level estimates.</div>
+</footer>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true" aria-label="Car details"></aside>
+
+<script>
+/* ---------- data ---------- */
+const CARS = [
+  {id:"nexon",brand:"Tata",name:"Nexon",alias:["nexon"],fuel:"Petrol",price:[8.0,15.6],ps:120,nm:170,acc:11.5,eff:17.4,boot:382,gc:208,stars:5,
+   color:["#2f7dd6","#14365e"],feat:["360° camera","Ventilated seats","10.25\" twin screens","Voice sunroof","JBL audio"]},
+  {id:"3xo",brand:"Mahindra",name:"XUV 3XO",alias:["3xo","xuv 3xo","xuv3xo"],fuel:"Petrol",price:[7.3,15.0],ps:131,nm:230,acc:9.5,eff:18.9,boot:364,gc:201,stars:5,
+   color:["#e3e6ec","#6b7385"],feat:["Panoramic sunroof","Level 2 ADAS","Harman Kardon audio","Dual-zone climate","Electric parking brake"]},
+  {id:"brezza",brand:"Maruti Suzuki",name:"Brezza",alias:["brezza"],fuel:"Petrol",price:[8.3,14.0],ps:103,nm:137,acc:12.5,eff:17.4,boot:328,gc:198,stars:4,
+   color:["#c9a227","#5c4a0f"],feat:["Head-up display","Sunroof","360° camera","Wireless charger","Huge service network"]},
+  {id:"venue",brand:"Hyundai",name:"Venue",alias:["venue"],fuel:"Petrol",price:[7.9,13.5],ps:120,nm:172,acc:10.5,eff:18.2,boot:350,gc:195,stars:4,
+   color:["#a3242d","#4a0d12"],feat:["Level 1 ADAS","Turbo DCT","Bose audio","Connected car tech","Ambient lighting"]},
+  {id:"syros",brand:"Kia",name:"Syros",alias:["syros"],fuel:"Petrol",price:[9.0,17.8],ps:120,nm:172,acc:11.0,eff:18.2,boot:465,gc:190,stars:5,
+   color:["#7cc8b4","#245548"],feat:["Ventilated rear seats","Level 2 ADAS","30\" trinity display","Reclining rear seats","OTA updates"]},
+  {id:"kylaq",brand:"Skoda",name:"Kylaq",alias:["kylaq"],fuel:"Petrol",price:[7.9,14.0],ps:115,nm:178,acc:10.5,eff:19.7,boot:446,gc:189,stars:5,
+   color:["#3fa66b","#123a24"],feat:["European build","6 airbags standard","Ventilated front seats","Sunroof","Punchy 1.0 TSI"]},
+  {id:"creta",brand:"Hyundai",name:"Creta",alias:["creta"],fuel:"Petrol",price:[11.0,20.0],ps:160,nm:253,acc:8.9,eff:18.4,boot:433,gc:190,stars:5,
+   color:["#4b5563","#111827"],feat:["Level 2 ADAS","Panoramic sunroof","Bose 8 speakers","Dual-zone climate","Powered driver seat"]},
+  {id:"vitara",brand:"Maruti Suzuki",name:"Grand Vitara",alias:["grand vitara","vitara","gv"],fuel:"Hybrid",price:[11.0,20.0],ps:116,nm:141,acc:13.0,eff:27.97,boot:373,gc:210,stars:5,
+   color:["#9aa9b8","#2b3542"],feat:["Strong hybrid","EV-only city crawl","Panoramic sunroof","Head-up display","AWD option"]},
+  {id:"be6",brand:"Mahindra",name:"BE 6",alias:["be 6","be6"],fuel:"Electric",price:[18.9,27.0],ps:286,nm:380,acc:6.7,eff:682,boot:455,gc:207,stars:5,
+   color:["#ff6a1a","#5a1600"],feat:["Fighter-jet cockpit","Level 2+ ADAS","Auto park","Dolby Atmos audio","Illuminated roof"]},
+  {id:"roxx",brand:"Mahindra",name:"Thar Roxx",alias:["thar roxx","roxx","thar"],fuel:"Petrol",price:[12.9,23.0],ps:177,nm:380,acc:10.0,eff:12.4,boot:447,gc:220,stars:5,
+   color:["#3d4a2a","#151a0d"],feat:["4XPLOR 4x4","Panoramic sunroof","Level 2 ADAS","Harman Kardon audio","Rear disc brakes"]},
+  {id:"punch",brand:"Tata",name:"Punch",alias:["punch"],fuel:"Petrol",price:[6.0,10.3],ps:88,nm:115,acc:16.0,eff:20.1,boot:366,gc:187,stars:5,
+   color:["#e0662f","#5c2410"],feat:["5-star GNCAP","Sunroof","Tall SUV seating","10.25\" touchscreen","Cheapest 5-star SUV here"]}
+];
+const RESALE={Maruti:.62,"Maruti Suzuki":.62,Hyundai:.57,Kia:.55,Tata:.50,Mahindra:.55,Skoda:.45};
+const resalePct=c=>c.id==="roxx"?.66:isEV(c)?.45:(RESALE[c.brand]||.5);
+let mine=[]; try{mine=JSON.parse(localStorage.getItem("tm-garage")||"[]").filter(Boolean)}catch(e){mine=[]}
+const byId = Object.fromEntries(CARS.map(c=>[c.id,c]));
+const isEV = c => c.fuel==="Electric";
+
+/* ---------- real-life translator ---------- */
+function life(c){
+  const big = Math.floor(c.boot/115), cabin = Math.floor((c.boot%115)/40);
+  const gc = c.gc>=200 ? "Clears Pune speed breakers fully loaded" : c.gc>=193 ? "Fine on breakers, slow down when the car is full" : "Take speed breakers at an angle with 5 people on board";
+  const pass = (c.acc*0.55).toFixed(1);
+  const monthly = isEV(c) ? Math.round(1200*0.17*8) : Math.round(1200/(c.eff*0.72)*105);
+  return {
+    boot:{k:`${c.boot} L boot`,v:`${big} big suitcases${cabin?` + ${cabin} cabin bag${cabin===1?"":"s"}`:""}`,s:"Weekend trip for 4 without a roof box"},
+    gc:{k:`${c.gc} mm clearance`,v:gc,s:"Measured unladen"},
+    acc:{k:`0–100 in ~${c.acc}s`,v:`Passes a truck on the Lonavala ghat in about ${pass}s`,s:"Estimated 60→100 km/h"},
+    eff:{k:isEV(c)?`${c.eff} km claimed`:`${c.eff} kmpl claimed`,v:`About ₹${monthly.toLocaleString("en-IN")} a month to run 1,200 km`,s:isEV(c)?"Home charging at ₹8/kWh":"Real-world ≈ 72% of claimed, petrol ₹105/L"},
+    nm:{k:`${c.nm} Nm torque`,v:c.nm>=220?"Pulls cleanly in 3rd gear up a flyover with 5 adults":c.nm>=165?"Comfortable overtakes without downshifting much":"Downshift before overtaking when loaded",s:"How strong the shove feels"},
+    safe:{k:`${c.stars}-star rating`,v:c.stars>=5?"Top crash score for adults and kids":"Good crash score; check the top variant's airbags",s:"Global or Bharat NCAP"}
+  };
+}
+
+/* ---------- silhouette ---------- */
+function carSVG(c,flip){
+  const g="g"+c.id+(flip?"f":"")+Math.random().toString(36).slice(2,6);
+  const ev=isEV(c);
+  return `<svg viewBox="0 0 320 124" role="img" aria-label="${c.brand} ${c.name}" ${flip?'style="transform:scaleX(-1)"':''}>
+  <defs><linearGradient id="${g}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c.color[0]}"/><stop offset="1" stop-color="${c.color[1]}"/></linearGradient></defs>
+  <path d="M18 88 L30 62 Q36 52 52 50 L98 46 L132 24 Q140 18 154 18 L226 18 Q240 18 250 28 L272 50 Q298 54 304 66 L306 86 Q306 92 298 92 L270 92 A26 26 0 0 0 218 92 L110 92 A26 26 0 0 0 58 92 L26 92 Q18 92 18 88 Z" fill="url(#${g})"/>
+  <path d="M108 48 L138 26 Q143 23 152 23 L182 23 L182 48 Z M190 23 L224 23 Q234 23 242 32 L258 48 L190 48 Z" fill="#0b0d12" opacity=".85"/>
+  <path d="M40 60 L300 60" stroke="#ffffff" stroke-opacity=".18" stroke-width="1.5"/>
+  <rect x="${ev?22:24}" y="62" width="${ev?40:16}" height="4" rx="2" fill="${ev?"#7fd4ff":"#fff7d6"}"/>
+  <rect x="294" y="58" width="10" height="7" rx="2" fill="#ff3d2e"/>
+  <circle cx="84" cy="92" r="20" fill="#0b0d12"/><circle cx="84" cy="92" r="11" fill="none" stroke="#9aa3b5" stroke-width="3"/>
+  <circle cx="244" cy="92" r="20" fill="#0b0d12"/><circle cx="244" cy="92" r="11" fill="none" stroke="#9aa3b5" stroke-width="3"/>
+</svg>`;
+}
+const stars = n => "★".repeat(n)+"☆".repeat(5-n);
+const priceTxt = c => `₹${c.price[0]}–${c.price[1]} lakh`;
+
+/* ---------- engine sound ---------- */
+let actx;
+function rev(c){
+  showTacho(c);
+  try{
+    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    const t=actx.currentTime, out=actx.createGain(); out.connect(actx.destination);
+    out.gain.setValueAtTime(0.0001,t); out.gain.exponentialRampToValueAtTime(0.35,t+0.08);
+    out.gain.setValueAtTime(0.35,t+1.9); out.gain.exponentialRampToValueAtTime(0.0001,t+2.6);
+    if(isEV(c)){
+      const o=actx.createOscillator(); o.type="sine";
+      o.frequency.setValueAtTime(260,t); o.frequency.exponentialRampToValueAtTime(1500,t+1.5); o.frequency.exponentialRampToValueAtTime(500,t+2.5);
+      const o2=actx.createOscillator(); o2.type="triangle"; o2.frequency.setValueAtTime(130,t); o2.frequency.exponentialRampToValueAtTime(760,t+1.5);
+      const g2=actx.createGain(); g2.gain.value=.25; o2.connect(g2).connect(out); o.connect(out);
+      [o,o2].forEach(x=>{x.start(t);x.stop(t+2.7)});
+    } else {
+      const peak = 90 + c.ps*0.55;
+      const f=actx.createBiquadFilter(); f.type="lowpass"; f.frequency.setValueAtTime(500,t); f.frequency.linearRampToValueAtTime(1600,t+1.3); f.frequency.linearRampToValueAtTime(600,t+2.4); f.Q.value=6;
+      f.connect(out);
+      [["sawtooth",1,.6],["square",.5,.35],["sawtooth",2.01,.15]].forEach(([type,mul,vol])=>{
+        const o=actx.createOscillator(); o.type=type;
+        o.frequency.setValueAtTime(38*mul,t); o.frequency.exponentialRampToValueAtTime(peak*mul,t+1.3); o.frequency.exponentialRampToValueAtTime(42*mul,t+2.5);
+        const g=actx.createGain(); g.gain.value=vol; o.connect(g).connect(f); o.start(t); o.stop(t+2.7);
+      });
+    }
+  }catch(e){}
+}
+
+/* ---------- garage ---------- */
+const grid=document.getElementById("grid");
+const lifeLine = c => { const L=life(c); return c.gc>=205?L.gc.v : c.boot>=430?L.boot.v : c.acc<=9.6?L.acc.v : L.eff.v; };
+function renderGrid(f="all"){
+  const list=CARS.filter(c=>f==="all"||(f==="safe"&&c.stars===5)||(f==="budget"&&c.price[0]<9)||(f==="green"&&c.fuel!=="Petrol"));
+  grid.innerHTML=list.map(c=>`
+  <article class="card">
+    ${c.fuel!=="Petrol"?`<span class="tagpill">${c.fuel}</span>`:""}
+    <button class="heart" type="button" data-heart="${c.id}" aria-pressed="${mine.includes(c.id)}" aria-label="Save ${c.name} to my garage">${mine.includes(c.id)?"♥":"♡"}</button>
+    <div class="stage">${carSVG(c)}</div>
+    <div class="brandline"><small>${c.brand}</small><span class="stars" aria-label="${c.stars} star safety">${stars(c.stars)}</span></div>
+    <div><h3>${c.name}</h3><div class="price">${priceTxt(c)}</div></div>
+    <div class="stats">
+      <div><b>${c.ps}</b><span>PS</span></div>
+      <div><b>${c.acc}s</b><span>0–100</span></div>
+      <div><b>${isEV(c)?c.eff:c.eff}</b><span>${isEV(c)?"km range":"kmpl"}</span></div>
+    </div>
+    <div class="real">${lifeLine(c)}</div>
+    <div class="actions">
+      <button class="btn ghost" data-rev="${c.id}" type="button">${isEV(c)?"Hear the whine":"Hear it rev"}</button>
+      <button class="btn" data-open="${c.id}" type="button">Explore</button>
+    </div>
+  </article>`).join("");
+}
+document.getElementById("filters").addEventListener("click",e=>{
+  const b=e.target.closest("[data-f]"); if(!b) return;
+  document.querySelectorAll("#filters .chipbtn").forEach(x=>x.setAttribute("aria-pressed",x===b));
+  renderGrid(b.dataset.f);
+});
+document.addEventListener("click",e=>{
+  const r=e.target.closest("[data-rev]"); if(r) rev(byId[r.dataset.rev]);
+  const o=e.target.closest("[data-open]"); if(o) openDrawer(byId[o.dataset.open]);
+  const bt=e.target.closest("[data-battle]"); if(bt){closeDrawer(); const other=bt.dataset.battle==="3xo"?"Nexon":"3XO"; const inp=document.getElementById("battleInput"); inp.value=`${byId[bt.dataset.battle].name} vs ${other} overall`; document.getElementById("battle").scrollIntoView({behavior:"smooth"}); runBattle(inp.value);}
+});
+
+/* ---------- drawer ---------- */
+const drawer=document.getElementById("drawer"), scrim=document.getElementById("scrim");
+function openDrawer(c){
+  const L=life(c);
+  drawer.innerHTML=`
+    <button class="btn ghost close" type="button" id="closeD">Close</button>
+    <small class="kicker">${c.brand} · ${c.fuel}</small>
+    <h3>${c.name}</h3>
+    <div class="price">${priceTxt(c)} · <span class="stars">${stars(c.stars)}</span></div>
+    <div class="hero-car">${carSVG(c)}</div>
+    <div style="display:flex;gap:8px"><button class="btn ghost" data-rev="${c.id}" type="button" style="flex:1">${isEV(c)?"Hear the whine":"Hear it rev"}</button><button class="btn" data-battle="${c.id}" type="button" style="flex:1">Battle this car</button></div>
+    <h4>Spec → real life</h4>
+    ${Object.values(L).map(x=>`<div class="tr"><div class="k">${x.k}</div><div class="life">${x.v}<small>${x.s}</small></div></div>`).join("")}
+    <h4>5-year ownership truth</h4>
+    ${truthHTML(c)}
+    <h4>Flashy features</h4>
+    <div class="feat">${c.feat.map(f=>`<span>${f}</span>`).join("")}</div>
+    <h4>Ask about the ${c.name}</h4>
+    <form class="ask" id="askForm"><label for="askIn" style="position:absolute;left:-9999px">Your question</label><input id="askIn" autocomplete="off" placeholder="Will a 6-footer fit in the back?"><button class="btn" type="submit">Ask</button></form>
+    <div class="ask-chips" id="askChips"><button class="chipbtn" type="button">Is it good for long highway trips?</button><button class="chipbtn" type="button">What will owners complain about?</button><button class="chipbtn" type="button">Which variant should I buy?</button></div>
+    <div class="ask-out" id="askOut"></div>`;
+  drawer.classList.add("open"); scrim.classList.add("open"); drawer.setAttribute("aria-hidden","false");
+  document.getElementById("closeD").focus();
+  document.getElementById("closeD").onclick=closeDrawer;
+  const ask=q=>askCar(c,q);
+  document.getElementById("askForm").onsubmit=e=>{e.preventDefault();const v=document.getElementById("askIn").value.trim();if(v)ask(v)};
+  document.getElementById("askChips").onclick=e=>{const b=e.target.closest("button");if(b)ask(b.textContent)};
+}
+function closeDrawer(){drawer.classList.remove("open");scrim.classList.remove("open");drawer.setAttribute("aria-hidden","true")}
+scrim.onclick=closeDrawer;
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeDrawer()});
+
+/* ---------- AI hookup ---------- */
+let sample=null;
+(async()=>{
+  try{ if(window.claude&&window.claude.use){ sample=await window.claude.use("sample"); } }catch(e){ sample=null; }
+  const chip=document.getElementById("aiChip");
+  if(sample){chip.textContent="AI live";chip.classList.add("live");}
+  else chip.textContent="Demo mode";
+})();
+const DATA = JSON.stringify(CARS.map(c=>({id:c.id,car:`${c.brand} ${c.name}`,fuel:c.fuel,price_lakh:c.price,ps:c.ps,nm:c.nm,zero_to_100_s:c.acc,[isEV(c)?"range_km":"kmpl"]:c.eff,boot_l:c.boot,ground_clearance_mm:c.gc,safety_stars:c.stars,features:c.feat})));
+
+/* ---------- concierge ---------- */
+const log=document.getElementById("log");
+const history=[];
+function addMsg(role,text,picks){
+  const d=document.createElement("div"); d.className="msg "+(role==="user"?"me":"ai");
+  d.textContent=text;
+  if(picks&&picks.length){
+    const wrap=document.createElement("div"); wrap.className="picks";
+    picks.forEach(p=>{const c=byId[p.id]; if(!c) return;
+      const b=document.createElement("button"); b.type="button"; b.className="pick"; b.dataset.open=c.id;
+      b.innerHTML=carSVG(c)+`<div><b></b><span></span></div>`;
+      b.querySelector("b").textContent=`${c.brand} ${c.name} · ${priceTxt(c)}`;
+      b.querySelector("span").textContent=p.why;
+      wrap.appendChild(b);});
+    d.appendChild(wrap);
+  }
+  log.appendChild(d); log.scrollTop=log.scrollHeight; return d;
+}
+function localPick(q){
+  const s=q.toLowerCase();
+  const m=s.match(/(\d+(?:\.\d+)?)\s*(l\b|lakh|lac|lakhs)/); const budget=m?parseFloat(m[1]):null;
+  const w={safe:1,eff:0,fun:0,space:0,gc:0,ev:0};
+  if(/safe|kid|family|child/.test(s)){w.safe+=3;w.space+=1}
+  if(/mileage|fuel|economy|running|commute|city|traffic/.test(s)) w.eff+=3;
+  if(/fun|fast|highway|overtak|ghat|power|enthusiast|drive/.test(s)) w.fun+=3;
+  if(/boot|luggage|trip|space|family/.test(s)) w.space+=2;
+  if(/village|rough|breaker|bad road|hometown/.test(s)) w.gc+=2;
+  if(/ev|electric|wild|future/.test(s)) w.ev+=4;
+  let pool=CARS.filter(c=>!budget||c.price[0]<=budget);
+  if(!pool.length) pool=[...CARS].sort((a,b)=>a.price[0]-b.price[0]).slice(0,3);
+  const score=c=>w.safe*c.stars/5 + w.eff*(isEV(c)?1:c.eff/28) + w.fun*(c.ps/290+ (12-c.acc)/6)/1.6 + w.space*c.boot/465 + w.gc*c.gc/210 + w.ev*(isEV(c)?1:c.fuel==="Hybrid"?.4:0);
+  const top=pool.sort((a,b)=>score(b)-score(a)).slice(0,3);
+  const why=c=>{const L=life(c),r=[];
+    if(w.safe>1&&c.stars===5) r.push("5-star crash rating");
+    if(w.eff) r.push(L.eff.v.replace("About ","about "));
+    if(w.fun) r.push(`${c.ps} PS, ${L.acc.v.toLowerCase()}`);
+    if(w.space) r.push(L.boot.v);
+    if(w.gc) r.push(L.gc.v.toLowerCase());
+    if(w.ev&&c.fuel!=="Petrol") r.push(c.fuel==="Electric"?"Fully electric with a claimed "+c.eff+" km range":"Strong hybrid that crawls on battery in traffic");
+    if(!r.length) r.push(L.boot.v);
+    return r.slice(0,2).join(" · ");};
+  const intro = budget ? `Here's what fits ₹${budget} lakh${w.safe>1?" with safety first":""}:` : "Here are my top picks for you:";
+  return {reply:intro+(budget&&top.some(c=>c.price[0]>budget)?" (nothing matched the budget exactly, so these are the closest)":""),picks:top.map(c=>({id:c.id,why:why(c)}))};
+}
+async function askAI(q){
+  history.push({role:"user",content:q});
+  const t=addMsg("ai",""); t.innerHTML='<span class="typing"><i></i><i></i><i></i></span>';
+  let res=null;
+  if(sample){
+    try{
+      const convo=history.slice(-8).map(h=>`${h.role==="user"?"Buyer":"Concierge"}: ${h.content}`).join("\n");
+      const prompt=`You are TorqueMach Concierge, a friendly, punchy car expert for Indian buyers. Recommend ONLY from this car list (prices are ex-showroom lakh, specs approximate):\n${DATA}\n\nConversation:\n${convo}\n\nReply as JSON only: {"reply": string (max 2 short sentences, warm and specific, mention trade-offs), "picks": [{"id": one of the ids, "why": string (max 18 words, translate specs into real life, e.g. suitcases, speed breakers, ghat overtakes, monthly fuel cost)}]} with 1-3 picks. If the buyer is just chatting or asking a follow-up, picks may be empty.`;
+      res = await sample.json(prompt,{modelTier:"default",cache:false});
+      if(!res||typeof res.reply!=="string") res=null;
+    }catch(e){ res=null; if(e&&e.code==="not_granted"){sample=null;document.getElementById("aiChip").textContent="Demo mode";document.getElementById("aiChip").classList.remove("live");} }
+  }
+  if(!res) res=localPick(q);
+  t.remove();
+  addMsg("ai",res.reply,(res.picks||[]).filter(p=>byId[p.id]));
+  history.push({role:"assistant",content:res.reply+" Picks: "+(res.picks||[]).map(p=>p.id).join(", ")});
+}
+document.getElementById("chatForm").addEventListener("submit",e=>{
+  e.preventDefault(); const i=document.getElementById("chatInput"); const q=i.value.trim(); if(!q) return;
+  if(document.getElementById("chatMode").textContent==="Example chat"){document.getElementById("chatMode").textContent="Your chat";}
+  addMsg("user",q); i.value=""; askAI(q);
+});
+document.getElementById("suggest").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  document.getElementById("chatMode").textContent="Your chat";
+  addMsg("user",b.textContent); askAI(b.textContent);
+});
+/* seeded example */
+(function(){
+  const q="Family of 4 in Pune, ₹15L budget, monthly 350 km trip to my hometown. Safety first.";
+  const d=document.createElement("div"); d.className="msg tag"; d.textContent="Example conversation"; log.appendChild(d);
+  addMsg("user",q); const r=localPick(q); addMsg("ai",r.reply,r.picks);
+  history.push({role:"user",content:q},{role:"assistant",content:r.reply});
+})();
+
+/* ---------- battle ---------- */
+const METRICS={
+  ps:{lab:"Power",unit:" PS",get:c=>c.ps,hi:true},
+  nm:{lab:"Torque",unit:" Nm",get:c=>c.nm,hi:true},
+  acc:{lab:"0–100",unit:"s",get:c=>c.acc,hi:false},
+  eff:{lab:"Running ₹/mo",unit:"",get:c=>isEV(c)?Math.round(1200*0.17*8):Math.round(1200/(c.eff*0.72)*105),hi:false,fmt:v=>"₹"+v.toLocaleString("en-IN")},
+  boot:{lab:"Boot",unit:" L",get:c=>c.boot,hi:true},
+  gc:{lab:"Clearance",unit:" mm",get:c=>c.gc,hi:true},
+  safe:{lab:"Safety",unit:"★",get:c=>c.stars,hi:true},
+  price:{lab:"Starts at",unit:"",get:c=>c.price[0],hi:false,fmt:v=>"₹"+v+"L"}
+};
+function findCars(s){
+  s=s.toLowerCase(); const hits=[];
+  CARS.forEach(c=>{let idx=-1; c.alias.forEach(a=>{const i=s.indexOf(a); if(i>=0&&(idx<0||i<idx)) idx=i}); if(idx>=0) hits.push([idx,c])});
+  hits.sort((a,b)=>a[0]-b[0]);
+  const uniq=[...new Map(hits.map(h=>[h[1].id,h[1]])).values()];
+  return uniq.slice(0,2);
+}
+function localBattle(q,a,b){
+  const s=q.toLowerCase(); let keys=[];
+  if(/overtak|ghat|highway|power|fast|fun|pick ?up/.test(s)) keys.push("ps","nm","acc");
+  if(/family|trip|luggage|boot|space/.test(s)) keys.push("boot","safe","gc");
+  if(/mileage|fuel|running|cost|economy|cheap|budget/.test(s)) keys.push("eff","price");
+  if(/safe/.test(s)) keys.push("safe");
+  if(/village|rough|breaker|bad road|pothole/.test(s)) keys.push("gc","nm");
+  if(/city|traffic|commute/.test(s)) keys.push("eff","gc");
+  keys=[...new Set(keys)];
+  if(keys.length<3) keys=[...new Set([...keys,"ps","acc","eff","boot","safe","price"])].slice(0,Math.max(5,keys.length));
+  let sa=0,sb=0; keys.forEach(k=>{const m=METRICS[k],va=m.get(a),vb=m.get(b); if(va===vb) return; ((m.hi?va>vb:va<vb)?sa++:sb++)});
+  const w=sa===sb?null:(sa>sb?a:b), l=w===a?b:a;
+  const verdict = w ? `${w.name} takes it ${Math.max(sa,sb)}–${Math.min(sa,sb)} on what matters for this question. ${l.name} still wins on ${keys.filter(k=>{const m=METRICS[k],vw=m.get(w),vl=m.get(l);return m.hi?vl>vw:vl<vw}).map(k=>METRICS[k].lab.toLowerCase()).join(" and ")||"price of entry"}, so test-drive both.`
+                    : `Dead heat. Pick on feel: ${a.name} for its ${a.feat[0].toLowerCase()}, ${b.name} for its ${b.feat[0].toLowerCase()}.`;
+  return {keys,verdict};
+}
+async function runBattle(q){
+  const out=document.getElementById("battleOut");
+  let [a,b]=findCars(q);
+  if(!a||!b){ out.innerHTML=`<div class="verdict"><b>Need two cars</b>Name two cars from the garage, for example “Creta vs Syros for a road trip”. Available: ${CARS.map(c=>c.name).join(", ")}.</div>`; return; }
+  out.innerHTML=`<div class="verdict"><b>Warming tyres</b><span class="typing"><i></i><i></i><i></i></span></div>`;
+  let r=null;
+  if(sample){
+    try{
+      const prompt=`You judge car battles for Indian buyers. Cars:\n${JSON.stringify(JSON.parse(DATA).filter(x=>x.id===a.id||x.id===b.id))}\nQuestion: "${q}"\nAvailable metric keys: ps (power), nm (torque), acc (0-100 time), eff (monthly running cost), boot, gc (ground clearance), safe (safety stars), price (starting price).\nReturn JSON only: {"keys": [3-5 metric keys most relevant to the question, most important first], "verdict": string (max 2 sentences, decisive, name the winner, explain in real-life terms, mention one trade-off)}.`;
+      r=await sample.json(prompt,{modelTier:"default",cache:false});
+      if(!r||!Array.isArray(r.keys)) r=null; else { r.keys=r.keys.filter(k=>METRICS[k]).slice(0,5); if(r.keys.length<2) r=null; }
+    }catch(e){ r=null; }
+  }
+  if(!r) r=localBattle(q,a,b);
+  let sa=0,sb=0;
+  const rows=r.keys.map(k=>{
+    const m=METRICS[k],va=m.get(a),vb=m.get(b);
+    const aw = va!==vb && (m.hi?va>vb:va<vb), bw = va!==vb && !aw;
+    if(aw) sa++; if(bw) sb++;
+    const wa = m.hi? va/Math.max(va,vb) : Math.min(va,vb)/va, wb = m.hi? vb/Math.max(va,vb) : Math.min(va,vb)/vb;
+    const f=v=>m.fmt?m.fmt(v):v+m.unit;
+    return `<div class="mrow"><div class="v a ${aw?"w":""}">${f(va)}</div><div class="bar a"><i class="${aw?"w":""}" style="width:0" data-w="${Math.round(wa*100)}"></i></div><div class="lab">${m.lab}</div><div class="bar"><i class="${bw?"w":""}" style="width:0" data-w="${Math.round(wb*100)}"></i></div><div class="v ${bw?"w":""}">${f(vb)}</div></div>`;
+  }).join("");
+  const verdictEl=document.createElement("div");
+  out.innerHTML=`
+    <div class="versus">
+      <div class="side ${sa>sb?"win":""}">${carSVG(a)}<h3>${a.name}</h3></div>
+      <div class="score num">${sa}–${sb}<small>ROUNDS</small></div>
+      <div class="side ${sb>sa?"win":""}">${carSVG(b,true)}<h3>${b.name}</h3></div>
+    </div>${rows}
+    <div class="verdict"><b>Verdict</b><span id="vtext"></span></div>`;
+  document.getElementById("vtext").textContent=r.verdict;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>out.querySelectorAll(".bar i").forEach(i=>i.style.width=i.dataset.w+"%")));
+}
+document.getElementById("battleForm").addEventListener("submit",e=>{e.preventDefault();runBattle(document.getElementById("battleInput").value)});
+document.getElementById("battlePrompts").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;document.getElementById("battleInput").value=b.textContent;runBattle(b.textContent)});
+
+/* ---------- hero streaks ---------- */
+(function(){
+  const cv=document.getElementById("streaks"),x=cv.getContext("2d");
+  const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let W,H,S=[];
+  function size(){const r=cv.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2);W=r.width;H=r.height;cv.width=W*d;cv.height=H*d;x.setTransform(d,0,0,d,0,0);
+    S=Array.from({length:Math.round(W/22)},()=>mk(true));}
+  function mk(init){const red=Math.random()<.62;return{x:init?Math.random()*W:-200,y:H*(.35+Math.random()*.65),l:60+Math.random()*220,v:(red?1.4:2.6)+Math.random()*3,c:red?"255,61,46":"127,212,255",a:.15+Math.random()*.45,w:1+Math.random()*2.2}}
+  function draw(){
+    x.clearRect(0,0,W,H);
+    const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,"rgba(11,13,18,1)");g.addColorStop(1,"rgba(11,13,18,.2)");
+    S.forEach(s=>{const gr=x.createLinearGradient(s.x-s.l,0,s.x,0);gr.addColorStop(0,`rgba(${s.c},0)`);gr.addColorStop(1,`rgba(${s.c},${s.a})`);
+      x.strokeStyle=gr;x.lineWidth=s.w;x.lineCap="round";x.beginPath();x.moveTo(s.x-s.l,s.y);x.lineTo(s.x,s.y);x.stroke();
+      if(!reduce){s.x+=s.v;if(s.x-s.l>W)Object.assign(s,mk(false));}});
+    x.fillStyle=g;x.globalCompositeOperation="destination-out";x.globalCompositeOperation="source-over";
+    if(!reduce) requestAnimationFrame(draw);
+  }
+  size();addEventListener("resize",size);draw();
+})();
+
+/* ---------- ownership truth ---------- */
+const inr=v=>"₹"+(v>=100000?(v/100000).toFixed(2)+"L":Math.round(v/1000)+"K");
+function truth(c){
+  const mid=(c.price[0]+c.price[1])/2*100000;
+  const onroad=mid*(isEV(c)?1.04:1.14);
+  const fuel=(isEV(c)?1200*0.17*8:1200/(c.eff*0.72)*105)*60;
+  const ins=onroad*0.11;
+  const svc=(isEV(c)?4000:(c.brand.startsWith("Maruti")?7000:c.brand==="Skoda"?14000:10000))*5;
+  const pct=resalePct(c), resale=onroad*pct;
+  const net=onroad+fuel+ins+svc-resale;
+  return {onroad,fuel,ins,svc,resale,pct,net,perKm:net/72000};
+}
+function truthHTML(c){
+  const t=truth(c), tot=t.onroad+t.fuel+t.ins+t.svc;
+  const seg=[["Car (on-road, mid variant)",t.onroad,"#5b6478"],["Fuel / charging",t.fuel,"#ff3d2e"],["Insurance",t.ins,"#c98a2b"],["Service",t.svc,"#7fd4ff"]];
+  const pts=[0,1,2,3,4,5].map(y=>{const v=t.onroad*(y===0?1:Math.pow(t.pct,y/5));return [20+y*56,90-((v/t.onroad)*70)]});
+  const path=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+  return `<div class="truth">
+    <div class="big"><b>${inr(t.net)}</b><span>true cost over 5 years · ₹${t.perKm.toFixed(1)}/km at 1,200 km a month</span></div>
+    <div class="stack">${seg.map(s=>`<i style="width:${(s[1]/tot*100).toFixed(1)}%;background:${s[2]}"></i>`).join("")}</div>
+    <div class="legend">${seg.map(s=>`<span><i style="background:${s[2]}"></i>${s[0]}</span><b>${inr(s[1])}</b>`).join("")}
+      <span class="back"><i style="background:var(--xenon);opacity:.4"></i>Back when you sell (~${Math.round(t.pct*100)}%)</span><b class="back">−${inr(t.resale)}</b></div>
+    <svg class="resale-svg" viewBox="0 0 320 110" role="img" aria-label="Resale value curve over 5 years">
+      ${[20,55,90].map(y=>`<line x1="20" x2="300" y1="${y}" y2="${y}" stroke="#262c3b"/>`).join("")}
+      <path d="${path} L300 90 L20 90 Z" fill="#7fd4ff" opacity=".12"/>
+      <path d="${path}" fill="none" stroke="#7fd4ff" stroke-width="2.5"/>
+      <circle cx="${pts[5][0]}" cy="${pts[5][1]}" r="5" fill="#7fd4ff"/>
+      <text x="${pts[5][0]-6}" y="${pts[5][1]-10}" fill="#eef1f7" font-size="12" text-anchor="end" font-family="JetBrains Mono,monospace">${inr(t.resale)} in yr 5</text>
+      ${[0,1,2,3,4,5].map(y=>`<text x="${20+y*56}" y="106" fill="#8b94a9" font-size="10" text-anchor="middle" font-family="JetBrains Mono,monospace">Y${y}</text>`).join("")}
+    </svg>
+  </div>`;
+}
+
+/* ---------- ask about a car ---------- */
+async function askCar(c,q){
+  const out=document.getElementById("askOut"); if(!out) return;
+  out.innerHTML='<span class="typing"><i></i><i></i><i></i></span>';
+  let ans=null;
+  if(sample){
+    try{
+      const d=JSON.parse(DATA).find(x=>x.id===c.id);
+      const r=await sample(`You are TorqueMach, an honest, enthusiastic Indian car expert. Answer the buyer's question about the ${c.brand} ${c.name} in at most 4 short sentences. Use these approximate specs and your own general knowledge of the car; translate numbers into real-life terms; be candid about weaknesses. Plain text, no markdown.\nSpecs: ${JSON.stringify(d)}\nQuestion: ${q}`,{modelTier:"default",cache:false});
+      ans=r&&r.text;
+    }catch(e){ans=null}
+  }
+  if(!ans){const L=life(c); ans=`Demo mode is on, so here's what the specs say: ${L.boot.v.toLowerCase()}, ${L.gc.v.toLowerCase()}, and ${L.eff.v.toLowerCase()}. Allow AI when the page asks to get a full answer to "${q}".`;}
+  out.textContent=ans;
+}
+
+/* ---------- tacho overlay ---------- */
+(function(){
+  const g=document.getElementById("tTicks"); let h="";
+  for(let i=0;i<=8;i++){const a=Math.PI*(1-i/8),x1=100+Math.cos(a)*68,y1=105-Math.sin(a)*68,x2=100+Math.cos(a)*58,y2=105-Math.sin(a)*58,tx=100+Math.cos(a)*46,ty=105-Math.sin(a)*46+4;
+    h+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${i>=7?"#ff3d2e":"#8b94a9"}" stroke-width="2"/><text x="${tx}" y="${ty}" fill="${i>=7?"#ff3d2e":"#8b94a9"}" font-size="11" text-anchor="middle" font-family="JetBrains Mono,monospace">${i}</text>`;}
+  g.innerHTML=h;
+  const a0=Math.PI*(1-6.5/8),a1=0;
+  document.getElementById("tRed").setAttribute("d",`M${100+Math.cos(a0)*80} ${105-Math.sin(a0)*80} A80 80 0 0 1 ${100+Math.cos(a1)*80} ${105-Math.sin(a1)*80}`);
+})();
+let tachoRaf,tachoTimer;
+function showTacho(c){
+  const el=document.getElementById("tacho"),needle=document.getElementById("tNeedle"),read=document.getElementById("tRead");
+  document.getElementById("tName").textContent=c.name;
+  const ev=isEV(c); document.getElementById("tUnit").textContent=ev?"kW · electric":"RPM";
+  el.classList.add("show"); cancelAnimationFrame(tachoRaf); clearTimeout(tachoTimer);
+  const peak=ev?7.6:Math.min(7.4,5.2+c.ps/110), t0=performance.now();
+  const step=now=>{const t=(now-t0)/1000; let v;
+    if(t<1.3) v=0.8+(peak-0.8)*Math.pow(t/1.3,1.6); else if(t<2.5) v=peak-(peak-0.9)*((t-1.3)/1.2); else v=0.9;
+    const jitter=t<1.3&&t>0.2?(Math.random()-.5)*0.08:0; v+=jitter;
+    const ang=-90+(v/8)*180; needle.setAttribute("transform",`rotate(${ang} 100 105)`);
+    read.textContent=ev?Math.round(v/8*c.ps*0.735):Math.round(v*1000).toLocaleString("en-IN");
+    if(t<2.6) tachoRaf=requestAnimationFrame(step);};
+  tachoRaf=requestAnimationFrame(step);
+  tachoTimer=setTimeout(()=>el.classList.remove("show"),3400);
+}
+
+/* ---------- road match ---------- */
+const ROADS=[
+  {id:"city",name:"City crawl",d:"Pune peak-hour traffic",w:{eff:.45,green:.25,price:.15,gc:.15},line:"M0 30 L20 30 L20 18 L34 18 L34 30 L52 30 L52 10 L64 10 L64 30 L90 30"},
+  {id:"ghat",name:"Ghat run",d:"Lonavala and Tamhini climbs",w:{nm:.4,ps:.3,acc:.3},line:"M0 34 Q15 34 22 20 T44 12 T66 22 T90 4"},
+  {id:"xway",name:"Expressway",d:"Mumbai–Pune at 100+",w:{safe:.4,ps:.3,acc:.2,eff:.1},line:"M0 30 L90 30 M0 22 L10 22 M20 22 L30 22 M40 22 L50 22 M60 22 L70 22 M80 22 L90 22"},
+  {id:"village",name:"Village roads",d:"Potholes, breakers, kachcha",w:{gc:.55,nm:.2,safe:.25},line:"M0 28 Q8 18 14 28 T28 28 Q34 14 42 28 T58 26 Q66 16 72 28 T90 28"},
+  {id:"konkan",name:"Konkan monsoon",d:"Rain, flooding, long trips",w:{gc:.35,safe:.35,boot:.3},line:"M10 6 L6 14 M28 4 L24 12 M46 8 L42 16 M64 4 L60 12 M82 6 L78 14 M0 30 Q22 24 45 30 T90 30"}
+];
+function norm(k,c){const vals=CARS.map(x=>val(k,x)),mn=Math.min(...vals),mx=Math.max(...vals);const v=val(k,c);const n=(v-mn)/((mx-mn)||1);return ["acc","eff","price"].includes(k)?1-n:n;}
+function val(k,c){return k==="eff"?METRICS.eff.get(c):k==="green"?(isEV(c)?1:c.fuel==="Hybrid"?.75:0):k==="safe"?c.stars:k==="price"?c.price[0]:METRICS[k].get(c);}
+const WHY={eff:c=>life(c).eff.v,green:c=>c.fuel==="Petrol"?"":c.fuel==="Electric"?"Silent, no gear-shifting fatigue in traffic":"Crawls on battery in stop-go traffic",price:c=>`Starts at ₹${c.price[0]}L`,gc:c=>life(c).gc.v,nm:c=>life(c).nm.v,ps:c=>`${c.ps} PS on tap`,acc:c=>life(c).acc.v,safe:c=>life(c).safe.v,boot:c=>life(c).boot.v};
+function renderRoads(id){
+  document.getElementById("roadTiles").innerHTML=ROADS.map(r=>`<button class="road" type="button" data-road="${r.id}" aria-pressed="${r.id===id}"><b>${r.name}</b><span>${r.d}</span><svg viewBox="0 0 90 40" aria-hidden="true"><path d="${r.line}" fill="none" stroke="${r.id===id?"#ff3d2e":"#8b94a9"}" stroke-width="2.5" stroke-linecap="round"/></svg></button>`).join("");
+  const road=ROADS.find(r=>r.id===id);
+  const scored=CARS.map(c=>{let s=0,best=[];Object.entries(road.w).forEach(([k,w])=>{const n=norm(k,c);s+=n*w;best.push([n*w,k])});best.sort((a,b)=>b[0]-a[0]);return {c,s:Math.round(s*100),why:best.map(b=>WHY[b[1]](c)).filter(Boolean)[0]}}).sort((a,b)=>b.s-a.s).slice(0,5);
+  document.getElementById("rankOut").innerHTML=scored.map((x,i)=>`<button class="rk" type="button" data-open="${x.c.id}"><span class="pos">${i+1}</span>${carSVG(x.c)}<div><b>${x.c.brand} ${x.c.name}</b><small>${x.why}</small><div class="meter"><i style="width:0" data-w="${x.s}"></i></div></div><span class="sc">${x.s}</span></button>`).join("");
+  requestAnimationFrame(()=>requestAnimationFrame(()=>document.querySelectorAll("#rankOut .meter i").forEach(i=>i.style.width=i.dataset.w+"%")));
+}
+document.getElementById("roadTiles").addEventListener("click",e=>{const b=e.target.closest("[data-road]");if(b)renderRoads(b.dataset.road)});
+
+/* ---------- my garage ---------- */
+function saveMine(){try{localStorage.setItem("tm-garage",JSON.stringify(mine))}catch(e){}}
+function renderMine(){
+  document.getElementById("navCount").textContent=mine.length;
+  const out=document.getElementById("mineOut");
+  if(!mine.length){out.innerHTML=`<div class="mine-empty">Your garage is empty. Tap ♡ on a car in The Garage to park it here.</div>`;return;}
+  const cars=mine.map(id=>byId[id]).filter(Boolean);
+  const ts=cars.map(truth);
+  out.innerHTML=`<div class="mine-row">${cars.map(c=>`<button class="mine-card" type="button" data-open="${c.id}">${carSVG(c)}<b>${c.name}</b><small>${priceTxt(c)} · ${c.ps} PS</small></button>`).join("")}</div>
+  <div class="mine-sum">
+    <div><b>${Math.max(...cars.map(c=>c.ps))} PS</b><span>Most power: ${cars.reduce((a,b)=>b.ps>a.ps?b:a).name}</span></div>
+    <div><b>${inr(Math.min(...ts.map(t=>t.net)))}</b><span>Cheapest to own for 5 years: ${cars[ts.indexOf(ts.reduce((a,b)=>b.net<a.net?b:a))].name}</span></div>
+    <div><b>${Math.max(...cars.map(c=>c.boot))} L</b><span>Biggest boot: ${cars.reduce((a,b)=>b.boot>a.boot?b:a).name}</span></div>
+  </div>`;
+}
+function toggleMine(id){
+  mine=mine.includes(id)?mine.filter(x=>x!==id):[...mine,id];
+  saveMine(); renderMine();
+  document.querySelectorAll(`[data-heart="${id}"]`).forEach(b=>{const on=mine.includes(id);b.setAttribute("aria-pressed",on);b.textContent=on?"♥":"♡"});
+}
+document.addEventListener("click",e=>{const h=e.target.closest("[data-heart]");if(h){e.stopPropagation();toggleMine(h.dataset.heart)}});
+document.getElementById("clearMine").onclick=()=>{mine=[];saveMine();renderMine();renderGrid(document.querySelector("#filters [aria-pressed='true']").dataset.f)};
+document.getElementById("battleMine").onclick=()=>{
+  const inp=document.getElementById("battleInput");
+  if(mine.length<2){document.getElementById("mineOut").insertAdjacentHTML("afterbegin",`<div class="verdict" style="margin-bottom:12px"><b>Need two cars</b>Save at least two cars to battle them.</div>`);return;}
+  inp.value=`${byId[mine[0]].name} vs ${byId[mine[1]].name} overall`;
+  document.getElementById("battle").scrollIntoView({behavior:"smooth"}); runBattle(inp.value);
+};
+
+/* ---------- init ---------- */
+if(!mine.length){mine=["3xo","syros"];}
+renderMine();
+renderRoads("ghat");
+renderGrid();
+runBattle(document.getElementById("battleInput").value);
+</script>
+</body>
+</html>
