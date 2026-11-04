@@ -4,13 +4,18 @@ function assertAmount(n: number): void {
   if (!Number.isFinite(n) || n < 0) throw new RangeError(`Invalid amount: ${n}`);
 }
 
+/** 120000 -> "1,20,000" (Indian digit grouping, whole numbers) */
+export function formatIndian(n: number): string {
+  assertAmount(n);
+  const s = String(Math.round(n));
+  if (s.length <= 3) return s;
+  const head = s.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, ",");
+  return `${head},${s.slice(-3)}`;
+}
+
 /** 1290000 -> "₹12,90,000" */
 export function formatInr(amount: number): string {
-  assertAmount(amount);
-  const s = String(Math.round(amount));
-  if (s.length <= 3) return `₹${s}`;
-  const head = s.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, ",");
-  return `₹${head},${s.slice(-3)}`;
+  return `₹${formatIndian(amount)}`;
 }
 
 const trim = (n: number): string => String(parseFloat(n.toFixed(2)));
